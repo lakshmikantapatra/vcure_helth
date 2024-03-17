@@ -8,3 +8,10 @@ if (!function_exists('pr')) {
         echo '</pre>';
     }
 }
+
+if (!function_exists('unique_token')) {
+    function unique_token($str = '')
+    {
+        return md5(uniqid($str, true));
+    }
+}
