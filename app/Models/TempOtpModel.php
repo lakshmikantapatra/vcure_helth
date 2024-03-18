@@ -14,7 +14,8 @@ class TempOtpModel extends Model
     protected $returnType = 'array';
     protected $useSoftDeletes = false;
 
-    // protected $allowedFields = ['name', 'email'];
+    protected $protectFields = false;
+    protected $allowedFields;
 
     protected bool $allowEmptyInserts = true;
 
