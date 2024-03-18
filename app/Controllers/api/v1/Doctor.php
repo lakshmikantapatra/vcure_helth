@@ -69,11 +69,11 @@ class Doctor extends BaseController
         $temp['expiry'] = date('Y-m-d H:i:s', strtotime('+10 minutes'));
 
         $this->db->transStart();
-        $return['status1'] = $doctorModel->insert($data);
-        $return['status2'] = $tempOtpModel->insert($temp);
+        $res['status1'] = $doctorModel->insert($data);
+        $res['status2'] = $tempOtpModel->insert($temp);
         $this->db->transComplete();
 
-        if ($return['status1'] && $return['status2']) {
+        if ($res['status1'] && $res['status2']) {
             $return['status'] = true;
             $return['msg'] = 'Registration Successful!';
             $return['data']['otp'] = $temp['otp'];
@@ -90,28 +90,28 @@ class Doctor extends BaseController
     public function personalDetails($id)
     {
         $doctorModel = new DoctorsModel();
-        $input = $this->request->getRawInput();
+        $input = $this->request->getJSON();
         $data = [];
 
-        $data['license_no'] = $input['license_no'];
-        $data['experience_year'] = $input['experience'];
-        $data['education'] = $input['education'];
-        $data['expertise_name'] = $input['expertise_field'];
+        $data['license_no'] = $input->license_no;
+        $data['experience_year'] = $input->experience;
+        $data['education'] = $input->education;
+        $data['expertise_name'] = $input->expertise_field;
 
-        if (!empty($input['bio'])) {
-            $data['professional_bio'] = $input['bio'];
+        if (!empty($input->bio)) {
+            $data['professional_bio'] = $input->bio;
         }
-        if (!empty($input['name'])) {
-            $data['name'] = $input['name'];
+        if (!empty($input->name)) {
+            $data['name'] = $input->name;
         }
-        if (!empty($input['email'])) {
-            $data['email'] = $input['email'];
+        if (!empty($input->email)) {
+            $data['email'] = $input->email;
         }
-        if (!empty($input['mobile'])) {
-            $data['mobile'] = $input['mobile'];
+        if (!empty($input->mobile)) {
+            $data['mobile'] = $input->mobile;
         }
 
-        if (!empty($input['profileimage'])) {
+        if (!empty($input->profileimage)) {
             $prof_img = $this->request->getFile('profileimage');
             if (!$prof_img->hasMoved()) {
                 $newName = 'profile_img_' . time() . $prof_img->getExtension();
@@ -134,12 +134,12 @@ class Doctor extends BaseController
             ->orWhere('mobile', $phone)
             ->first();
         if (!empty($data)) {
-            return $this->response->setJSON([
+            return ([
                 'status' => true,
                 'data' => $data,
             ]);
         } else {
-            return $this->response->setJSON([
+            return ([
                 'status' => false,
                 'data' => [],
             ]);
@@ -155,8 +155,9 @@ class Doctor extends BaseController
         $mobile = !empty($input['phone']) ? $input['phone'] : '';
 
         $existingUser = $this->checkExistingUser($email, $mobile);
-        if ($existingUser->status) {
-            $data = $existingUser->data;
+
+        if ($existingUser['status']) {
+            $data = $existingUser['data'];
         } else {
             return $this->response->setJSON([
                 'status' => false,
@@ -206,8 +207,8 @@ class Doctor extends BaseController
         $mobile = !empty($input['phone']) ? $input['phone'] : '';
 
         $existingUser = $this->checkExistingUser($email, $mobile);
-        if ($existingUser->status) {
-            $data = $existingUser->data;
+        if ($existingUser['status']) {
+            $data = $existingUser['data'];
         } else {
             return $this->response->setJSON([
                 'status' => false,
@@ -229,11 +230,11 @@ class Doctor extends BaseController
 
     public function verifyOTP($token)
     {
-        $input = $this->request->getRawInput();
+        $input = $this->request->getJSON();
         $tempOtpModel = new TempOtpModel();
         $doctorModel = new DoctorsModel();
 
-        $otp = !empty($input['otp']) ? $input['otp'] : '';
+        $otp = !empty($input->otp) ? $input->otp : '';
 
         $data = $tempOtpModel
             ->where('token', $token)
@@ -261,10 +262,18 @@ class Doctor extends BaseController
     public function newPassword($id)
     {
 
-        $input = $this->request->getRawInput();
+        $input = $this->request->getJSON();
         $doctorModel = new DoctorsModel();
 
-        $password = $input['password'];
+        $password = $input->password;
+
+        if (empty($password)) {
+            return $this->response->setJSON([
+                'status' => false,
+                'msg' => 'Please enter password!',
+            ]);
+        }
+
         $hashed_password = password_hash($password, PASSWORD_BCRYPT);
 
         $return['status'] = $doctorModel->update($id, [
