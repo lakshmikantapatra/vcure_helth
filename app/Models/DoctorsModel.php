@@ -6,21 +6,22 @@ use CodeIgniter\Model;
 
 class DoctorsModel extends Model
 {
-    protected $table      = 'doctors';
+    protected $table = 'doctors';
     protected $primaryKey = 'id';
 
     protected $useAutoIncrement = true;
 
-    protected $returnType     = 'array';
+    protected $returnType = 'array';
     protected $useSoftDeletes = false;
 
-    // protected $allowedFields = ['name', 'email'];
+    protected $protectFields = false;
+    protected $allowedFields;
 
     protected bool $allowEmptyInserts = true;
 
     // Dates
     protected $useTimestamps = true;
-    protected $dateFormat    = 'datetime';
-    protected $createdField  = 'created_at';
-    protected $updatedField  = 'updated_at';
+    protected $dateFormat = 'datetime';
+    protected $createdField = 'created_at';
+    protected $updatedField = 'updated_at';
 }
