@@ -49,20 +49,34 @@ class Doctor extends BaseController
             $prof_img = $this->request->getFile('profileimage');
             if (!$prof_img->hasMoved()) {
                 $newName = 'profile_img_' . time() . $prof_img->getExtension();
-                $prof_img->move(WRITEPATH . 'uploads/doctor/profile', $newName);
+                $moved = $prof_img->move('uploads/doctor/profile', $newName);
+                if (!$moved) {
+                    return $this->response->setJSON([
+                        'status' => false,
+                        'msg' => 'Profile image upload failed!',
+                        'data' => [],
+                    ]);
+                }
+                $data['profileimage'] = $newName;
             }
-            $data['profileimage'] = $newName;
         }
         if (!empty($formData['kycimage'])) {
             $kyc_img = $this->request->getFile('kycimage');
             if (!$kyc_img->hasMoved()) {
                 $newName = 'kyc_img_' . time() . $kyc_img->getExtension();
-                $kyc_img->move(WRITEPATH . 'uploads/doctor/kyc', $newName);
+                $moved = $kyc_img->move('uploads/doctor/kyc', $newName);
+                if (!$moved) {
+                    return $this->response->setJSON([
+                        'status' => false,
+                        'msg' => 'KYC image upload failed!',
+                        'data' => [],
+                    ]);
+                }
+                $data['kycimage'] = $newName;
             }
-            $data['kycimage'] = $newName;
         }
 
-        $temp['token'] = unique_token(time());
+        $temp['token'] = unique_token($data['email'] . time());
         $temp['email'] = $data['email'];
         $temp['mobile'] = $data['mobile'];
         $temp['otp'] = random_int(100000, 999999);
@@ -115,9 +129,16 @@ class Doctor extends BaseController
             $prof_img = $this->request->getFile('profileimage');
             if (!$prof_img->hasMoved()) {
                 $newName = 'profile_img_' . time() . $prof_img->getExtension();
-                $prof_img->move(WRITEPATH . 'uploads/doctor/profile', $newName);
+                $moved = $prof_img->move('uploads/doctor/profile', $newName);
+                if (!$moved) {
+                    return $this->response->setJSON([
+                        'status' => false,
+                        'msg' => 'Profile image upload failed!',
+                        'data' => [],
+                    ]);
+                }
+                $data['profileimage'] = $newName;
             }
-            $data['profileimage'] = $newName;
         }
 
         $return['status'] = $doctorModel->update($data, $id);
@@ -129,6 +150,12 @@ class Doctor extends BaseController
     public function checkExistingUser($email = '', $phone = '')
     {
         $doctorModel = new DoctorsModel();
+        if (empty($email) && empty($phone)) {
+            return ([
+                'status' => false,
+                'data' => [],
+            ]);
+        }
         $data = $doctorModel
             ->where('email', $email)
             ->orWhere('mobile', $phone)
@@ -185,7 +212,7 @@ class Doctor extends BaseController
                 ],
             ]);
         } else {
-            $temp['token'] = unique_token(time());
+            $temp['token'] = unique_token($data['email'] . time());
             $temp['email'] = $data['email'];
             $temp['mobile'] = $data['mobile'];
             $temp['otp'] = random_int(100000, 999999);
@@ -216,7 +243,7 @@ class Doctor extends BaseController
                 'data' => [],
             ]);
         }
-        $temp['token'] = unique_token(time());
+        $temp['token'] = unique_token($data['email'] . time());
         $temp['email'] = $data['email'];
         $temp['mobile'] = $data['mobile'];
         $temp['otp'] = random_int(100000, 999999);
