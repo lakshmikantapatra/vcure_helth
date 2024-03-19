@@ -25,6 +25,31 @@ USE `vcure_health`;
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `clinics`
+--
+
+CREATE TABLE `clinics` (
+  `id` int(11) NOT NULL,
+  `clinic_name` varchar(191) NOT NULL,
+  `address` varchar(191) NOT NULL,
+  `pin_code` int(10) NOT NULL,
+  `mobile` varchar(20) NOT NULL,
+  `payment_mode` enum('online','offline') NOT NULL DEFAULT 'online',
+  `emergency_time` varchar(20) NOT NULL,
+  `primary_care_unit` varchar(191) NOT NULL,
+  `open_time` varchar(20) NOT NULL,
+  `closeing_time` varchar(20) NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- RELATIONSHIPS FOR TABLE `clinics`:
+--
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `doctors`
 --
 
@@ -48,6 +73,74 @@ CREATE TABLE `doctors` (
   `updated_at` datetime NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- RELATIONSHIPS FOR TABLE `doctors`:
+--
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `doctor_practice`
+--
+
+CREATE TABLE `doctor_practice` (
+  `id` int(11) NOT NULL,
+  `doctor_id` int(11) NOT NULL,
+  `type` enum('clinic','video','voice','chat') NOT NULL DEFAULT 'clinic',
+  `is_consultation_on` tinyint(1) NOT NULL DEFAULT 1,
+  `price` int(11) NOT NULL,
+  `clinic_id` int(11) DEFAULT NULL,
+  `clinic_name` varchar(191) DEFAULT NULL,
+  `clinic_address` varchar(255) DEFAULT NULL,
+  `clinic_mobile` varchar(191) DEFAULT NULL,
+  `clinic_email` varchar(255) DEFAULT NULL,
+  `clinic_pincode` int(10) DEFAULT NULL,
+  `status` enum('active','inactive') NOT NULL DEFAULT 'active',
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- RELATIONSHIPS FOR TABLE `doctor_practice`:
+--
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `doctor_practice_details`
+--
+
+CREATE TABLE `doctor_practice_details` (
+  `id` int(11) NOT NULL,
+  `practice_id` int(11) NOT NULL,
+  `days` varchar(191) NOT NULL,
+  `start_time` varchar(11) NOT NULL,
+  `end_time` varchar(11) NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- RELATIONSHIPS FOR TABLE `doctor_practice_details`:
+--
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `expertise`
+--
+
+CREATE TABLE `expertise` (
+  `id` int(11) NOT NULL,
+  `expertise_name` varchar(191) NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- RELATIONSHIPS FOR TABLE `expertise`:
+--
+
 -- --------------------------------------------------------
 
 --
@@ -66,13 +159,41 @@ CREATE TABLE `password_temp_tbl` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
+-- RELATIONSHIPS FOR TABLE `password_temp_tbl`:
+--
+
+--
 -- Indexes for dumped tables
 --
+
+--
+-- Indexes for table `clinics`
+--
+ALTER TABLE `clinics`
+  ADD PRIMARY KEY (`id`);
 
 --
 -- Indexes for table `doctors`
 --
 ALTER TABLE `doctors`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `doctor_practice`
+--
+ALTER TABLE `doctor_practice`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `doctor_practice_details`
+--
+ALTER TABLE `doctor_practice_details`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `expertise`
+--
+ALTER TABLE `expertise`
   ADD PRIMARY KEY (`id`);
 
 --
@@ -86,9 +207,33 @@ ALTER TABLE `password_temp_tbl`
 --
 
 --
+-- AUTO_INCREMENT for table `clinics`
+--
+ALTER TABLE `clinics`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `doctors`
 --
 ALTER TABLE `doctors`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `doctor_practice`
+--
+ALTER TABLE `doctor_practice`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `doctor_practice_details`
+--
+ALTER TABLE `doctor_practice_details`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `expertise`
+--
+ALTER TABLE `expertise`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
