@@ -4,9 +4,9 @@ namespace App\Models;
 
 use CodeIgniter\Model;
 
-class DoctorsModel extends Model
+class DoctorPracticeDetailsModel extends Model
 {
-    protected $table = 'doctors';
+    protected $table = 'doctor_practice_details';
     protected $primaryKey = 'id';
 
     protected $useAutoIncrement = true;
@@ -25,13 +25,4 @@ class DoctorsModel extends Model
     protected $createdField = 'created_at';
     protected $updatedField = 'updated_at';
 
-    public function isDoctorExits($id = '')
-    {
-        $data = $this->find($id);
-        if (!empty($data)) {
-            return true;
-        } else {
-            return false;
-        }
-    }
 }

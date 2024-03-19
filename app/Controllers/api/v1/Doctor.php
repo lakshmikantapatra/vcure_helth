@@ -3,6 +3,8 @@
 namespace App\Controllers\api\v1;
 
 use App\Controllers\BaseController;
+use App\Models\DoctorPracticeDetailsModel;
+use App\Models\DoctorPracticeModel;
 use App\Models\DoctorsModel;
 use App\Models\TempOtpModel;
 
@@ -309,5 +311,257 @@ class Doctor extends BaseController
         $return['msg'] = $return['status'] ? 'Password changed successfully!' : 'Failed to change password!';
 
         return $this->response->setJSON($return);
+    }
+
+    public function postPractice($id = '')
+    {
+
+        $input = $this->request->getPost();
+        $docPracticeModel = new DoctorPracticeModel();
+
+        $type = $input['practice_type'];
+        $isPracticeExists = $docPracticeModel
+            ->isDoctorPracticeExits($id, $type);
+        if ($isPracticeExists) {
+            return $this->response->setJSON([
+                'status' => false,
+                'msg' => 'Practice already exists!',
+                'data' => [],
+            ]);
+        }
+
+        $data['doctor_id'] = $id;
+        $data['type'] = $input['practice_type'];
+        $data['price'] = $input['practice_fees'];
+        if (!empty($input['clinic_name'])) {
+            $data['clinic_name'] = $input['clinic_name'];
+        }
+        if (!empty($input['contact'])) {
+            $data['clinic_mobile'] = $input['contact'];
+        }
+        if (!empty($input['email'])) {
+            $data['clinic_email'] = $input['email'];
+        }
+        if (!empty($input['clinic_address'])) {
+            $data['clinic_address'] = $input['clinic_address'];
+        }
+        if (!empty($input['pincode'])) {
+            $data['clinic_pincode'] = $input['pincode'];
+        }
+
+        $return['status'] = $docPracticeModel->insert($data);
+        $return['msg'] = $return['status'] ? 'Practice added successfully!' : 'Failed to add practice!';
+        $return['data'] = $return['status'] ? [
+            'id' => $docPracticeModel->getInsertID(),
+            'practice_type' => $data['type'],
+            'price' => $data['price'],
+        ] : [];
+
+        return $this->response->setJSON($return);
+    }
+
+    public function postPracticeSchedule($id = '')
+    {
+        $input = $this->request->getJSON();
+        $practiceDetailsModel = new DoctorPracticeDetailsModel();
+        $isPracticeExists = (new DoctorPracticeModel())->isPracticeExits($id);
+
+        if (!$isPracticeExists) {
+            return $this->response->setJSON([
+                'status' => false,
+                'msg' => 'Invalid Operation!',
+                'data' => [],
+            ]);
+        }
+
+        $this->db->transStart();
+        $data['practice_id'] = $id;
+        $return['practiceId'] = $id;
+        try {
+            foreach ($input as $key => $schedule) {
+                $data['days'] = json_encode($schedule->days);
+                $data['start_time'] = $schedule->startTime;
+                $data['end_time'] = $schedule->endTime;
+
+                $status = $practiceDetailsModel->insert($data, false);
+
+                $return['schedules'][$key]['days'] = $data['days'];
+                $return['schedules'][$key]['startTime'] = $data['start_time'];
+                $return['schedules'][$key]['endTime'] = $data['end_time'];
+            }
+            $this->db->transComplete();
+            return $this->response->setJSON([
+                'status' => $status,
+                'msg' => $status ? 'Schedules added successfully!' : 'Invalid Operation!',
+                'data' => $return,
+            ]);
+        } catch (\Exception $e) {
+            $this->db->transRollback();
+            return $this->response->setJSON([
+                'status' => false,
+                'msg' => $e->getMessage(),
+                'data' => [],
+            ]);
+        }
+
+    }
+
+    public function getPractice($doc_id = '')
+    {
+        $docPracticeModel = new DoctorPracticeModel();
+
+        try {
+            $data = $docPracticeModel
+                ->select('doctor_practice.*, doctor_practice_details.id as details_id, doctor_practice_details.days, doctor_practice_details.start_time, doctor_practice_details.end_time')
+                ->where('doctor_practice.doctor_id', $doc_id)
+                ->join('doctor_practice_details', 'doctor_practice_details.practice_id = doctor_practice.id', 'left')
+                ->findAll();
+
+            $return['status'] = true;
+            $return['msg'] = 'Successful!';
+
+            foreach ($data as $value) {
+                $return['practices'][$value['type']]['id'] = $value['id'];
+                $return['practices'][$value['type']]['type'] = $value['type'];
+                $return['practices'][$value['type']]['fees'] = (int) $value['price'];
+                $return['practices'][$value['type']]['isConsultationSwitched'] = (bool) $value['is_consultation_on'];
+                $return['practices'][$value['type']]['schedules'][] = [
+                    'id' => $value['details_id'],
+                    'days' => json_decode($value['days']),
+                    'startTime' => $value['start_time'],
+                    'endTime' => $value['end_time'],
+                ];
+            }
+            return $this->response->setJSON($return);
+        } catch (\Exception $e) {
+            return $this->response->setJSON([
+                'status' => false,
+                'msg' => $e->getMessage(),
+                'data' => [],
+            ]);
+        }
+    }
+
+    public function updatePractice($id = '')
+    {
+        $input = $this->request->getJSON();
+        $docPracticeModel = new DoctorPracticeModel();
+
+        $isPracticeExists = $docPracticeModel->isPracticeExits($id);
+        if (!$isPracticeExists) {
+            return $this->response->setJSON([
+                'status' => false,
+                'msg' => 'Invalid Operation!',
+                'data' => [],
+            ]);
+        }
+
+        $data['type'] = $input->practice_type;
+        $data['price'] = $input->practice_fees;
+        if (!empty($input->clinic_name)) {
+            $data['clinic_name'] = $input->clinic_name;
+        }
+        if (!empty($input->contact)) {
+            $data['clinic_mobile'] = $input->contact;
+        }
+        if (!empty($input->email)) {
+            $data['clinic_email'] = $input->email;
+        }
+        if (!empty($input->clinic_address)) {
+            $data['clinic_address'] = $input->clinic_address;
+        }
+        if (!empty($input->pincode)) {
+            $data['clinic_pincode'] = $input->pincode;
+        }
+
+        $return['status'] = $docPracticeModel->update($id, $data);
+        $return['msg'] = $return['status'] ? 'Practice updated successfully!' : 'Invalid Operation!';
+
+        $return['data'] = $return['status'] ? [
+            'id' => $id,
+            'practice_type' => $data['type'],
+            'email' => $data['clinic_email'] ?? '',
+            'created_at' => $data['created_at'],
+            'updated_at' => $data['updated_at'],
+        ] : [];
+
+        return $this->response->setJSON($return);
+    }
+
+    public function updatePracticeSchedule($id = '')
+    {
+        $input = $this->request->getJSON();
+        $practiceDetailsModel = new DoctorPracticeDetailsModel();
+        $isPracticeExists = (new DoctorPracticeModel())->isPracticeExits($id);
+
+        if (!$isPracticeExists) {
+            return $this->response->setJSON([
+                'status' => false,
+                'msg' => 'Invalid Operation!',
+                'data' => [],
+            ]);
+        }
+
+        $this->db->transStart();
+        $data['practice_id'] = $id;
+        $return['practiceId'] = $id;
+        try {
+            foreach ($input as $key => $schedule) {
+                $data['id'] = !empty($schedule->id) ? $schedule->id : '';
+                $data['days'] = json_encode($schedule->days);
+                $data['start_time'] = $schedule->startTime;
+                $data['end_time'] = $schedule->endTime;
+
+                $status = $practiceDetailsModel->save($data, false);
+
+                $return['schedules'][$key]['days'] = $data['days'];
+                $return['schedules'][$key]['startTime'] = $data['start_time'];
+                $return['schedules'][$key]['endTime'] = $data['end_time'];
+            }
+            $this->db->transComplete();
+            return $this->response->setJSON([
+                'status' => $status,
+                'msg' => $status ? 'Schedules updated successful!' : 'Invalid Operation!',
+                'data' => $return,
+            ]);
+        } catch (\Exception $e) {
+            $this->db->transRollback();
+            return $this->response->setJSON([
+                'status' => false,
+                'msg' => $e->getMessage(),
+                'data' => [],
+            ]);
+        }
+
+    }
+
+    public function deletePractice($id = '')
+    {
+        $docPracticeDetailsModel = new DoctorPracticeDetailsModel();
+        $docPracticeModel = new DoctorPracticeModel();
+        $isPracticeExists = $docPracticeModel->isPracticeExits($id);
+        if (!$isPracticeExists) {
+            return $this->response->setJSON([
+                'status' => false,
+                'msg' => 'Invalid Operation!',
+                'data' => [],
+            ]);
+        }
+
+        $this->db->transStart();
+        try {
+            $docPracticeModel->delete($id);
+            $docPracticeDetailsModel->where('practice_id', $id)->delete();
+            $this->db->transComplete();
+            $return['status'] = true;
+            $return['msg'] = 'Practice deleted successfully!';
+            return $this->response->setJSON($return);
+        } catch (\Exception $e) {
+            $this->db->transRollback();
+            return $this->response->setJSON([
+                'status' => false,
+                'msg' => $e->getMessage(),
+            ]);
+        }
     }
 }
