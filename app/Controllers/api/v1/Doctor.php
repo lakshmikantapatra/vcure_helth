@@ -3,6 +3,7 @@
 namespace App\Controllers\api\v1;
 
 use App\Controllers\BaseController;
+use App\Models\AppointmentsFilterModel;
 use App\Models\DoctorPracticeDetailsModel;
 use App\Models\DoctorPracticeModel;
 use App\Models\DoctorsModel;
@@ -561,6 +562,27 @@ class Doctor extends BaseController
             return $this->response->setJSON([
                 'status' => false,
                 'msg' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    public function getAppointmentsFilters()
+    {
+        $appointmentsFilterModel = new AppointmentsFilterModel();
+
+        $filters = $appointmentsFilterModel->getFilters();
+
+        if ($filters) {
+            return $this->response->setJSON([
+                'status' => true,
+                'msg' => 'Filters fetched successfully!',
+                'data' => $filters,
+            ]);
+        } else {
+            return $this->response->setJSON([
+                'status' => false,
+                'msg' => 'Invalid Operation!',
+                'data' => [],
             ]);
         }
     }
