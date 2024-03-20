@@ -24,6 +24,25 @@ $routes->group('api/v1', ['namespace' => 'App\Controllers\api\v1'], function ($a
         $r->put('practice/(:num)', "Doctor::updatePractice/$1");
         $r->put('practice/(:num)/schedule', 'Doctor::updatePracticeSchedule/$1');
         $r->delete('practice/(:num)', 'Doctor::deletePractice/$1');
+        $r->get('appointments/filter', 'Doctor::getAppointmentsFilters');
+    });
+
+    // ======= CLINIC ROUTES ========
+    $api->group('clinic', function ($r) {
+        $r->get('/', 'Clinic::index');
+    });
+
+    // ======= PATIENT ROUTES ========
+    $api->group('patient', function ($r) {
+        $r->get('/', 'Patient::index');
+        $r->post('register', 'Patient::register');
+        $r->put('verify/(:segment)', 'Doctor::verifyOTP/$1');
+        $r->post('login', 'Doctor::login');
+    });
+
+    // ======= PUBLIC ROUTES ========
+    $api->group('public', function ($r) {
+        $r->get('/', 'Public::index');
     });
 });
 // ########## END API ROUTES ##########
