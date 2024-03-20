@@ -5,6 +5,7 @@ namespace App\Controllers\api\v1;
 use App\Controllers\BaseController;
 use App\Models\PatientModel;
 use App\Models\TempOtpModel;
+use DateTime;
 
 class Patient extends BaseController
 {
@@ -21,7 +22,7 @@ class Patient extends BaseController
 
         $email = $input->email;
         $isEmailExists = $patientModel->isEmailExits($email);
-        if (!$isEmailExists) {
+        if ($isEmailExists) {
             return $this->response->setJSON([
                 'status' => false,
                 'message' => 'Email already exists.',
@@ -39,7 +40,7 @@ class Patient extends BaseController
         if (!empty($input->memberId)) {
             $data['member_id'] = $input->memberId;
         }
-        $dob = $input->dob;
+        $dob = $input->date_of_birth;
         [$d, $m, $y] = explode('/', $dob);
         $data['date_of_birth'] = $y . '-' . $m . '-' . $d;
 
@@ -154,6 +155,33 @@ class Patient extends BaseController
                 'id' => $patient['id'],
                 'email' => $patient['email'],
             ],
+        ]);
+    }
+
+    public function getAccounts($id)
+    {
+        $patientModel = new PatientModel();
+        $patients = $patientModel
+            ->where('id', $id)
+            ->orWhere('member_id', $id)
+            ->findAll();
+
+        if (empty($patients)) {
+            return $this->response->setJSON([
+                'status' => false,
+                'msg' => 'Patients not found!',
+                'data' => [],
+            ]);
+        }
+
+        foreach ($patients as $key => $patient) {
+            $acc[$key]['patient_name'] = $patient['first_name'] . ' ' . $patient['last_name'];
+            $acc[$key]['gender'] = $patient['gender'];
+            $acc[$key]['age'] = (new DateTime($patient['date_of_birth']))->diff(new DateTime())->y;
+        }
+        return $this->response->setJSON([
+            'status' => true,
+            'data' => $acc,
         ]);
     }
 }

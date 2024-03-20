@@ -36,8 +36,9 @@ $routes->group('api/v1', ['namespace' => 'App\Controllers\api\v1'], function ($a
     $api->group('patient', function ($r) {
         $r->get('/', 'Patient::index');
         $r->post('register', 'Patient::register');
-        $r->put('verify/(:segment)', 'Doctor::verifyOTP/$1');
-        $r->post('login', 'Doctor::login');
+        $r->put('verify/(:segment)', 'Patient::verifyOTP/$1');
+        $r->post('login', 'Patient::login');
+        $r->get('(:num)/accounts', 'Patient::getAccounts/$1');
     });
 
     // ======= PUBLIC ROUTES ========
