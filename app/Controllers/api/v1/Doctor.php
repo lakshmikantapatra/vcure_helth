@@ -113,7 +113,14 @@ class Doctor extends BaseController
         $data['license_no'] = $input->license_no;
         $data['experience_year'] = $input->experience;
         $data['education'] = $input->education;
-        $data['expertise_name'] = $input->expertise_field;
+
+        $expertise_name = $input->expertise_field;
+
+        $expertise = $this->db->table('expertise')->where('expertise_name', $expertise_name)->first();
+        if (!empty($expertise)) {
+            $data['expertise_id'] = $expertise['id'];
+            $data['expertise_name'] = $expertise['expertise_name'];
+        }
 
         if (!empty($input->bio)) {
             $data['professional_bio'] = $input->bio;
@@ -319,17 +326,6 @@ class Doctor extends BaseController
 
         $input = $this->request->getPost();
         $docPracticeModel = new DoctorPracticeModel();
-
-        $type = $input['practice_type'];
-        $isPracticeExists = $docPracticeModel
-            ->isDoctorPracticeExits($id, $type);
-        if ($isPracticeExists) {
-            return $this->response->setJSON([
-                'status' => false,
-                'msg' => 'Practice already exists!',
-                'data' => [],
-            ]);
-        }
 
         $data['doctor_id'] = $id;
         $data['type'] = $input['practice_type'];
@@ -582,6 +578,76 @@ class Doctor extends BaseController
             return $this->response->setJSON([
                 'status' => false,
                 'msg' => 'Invalid Operation!',
+                'data' => [],
+            ]);
+        }
+    }
+
+    public function getExpertise()
+    {
+        $expertiseTable = $this->db->table('expertise');
+
+        $data = $expertiseTable
+            ->select('id, expertise_name')
+            ->get()->getResultArray();
+
+        return $this->response->setJSON([
+            'status' => !empty($data) ? true : false,
+            'msg' => !empty($data) ? 'Expertise fetched successfully!' : 'Invalid Operation!',
+            'data' => $data,
+        ]);
+    }
+
+    public function getDoctorsByExpertise($id = '')
+    {
+        $input = $this->request->getJSON();
+
+        $where = '';
+        if (!empty($input->location)) {
+            $locationArr = explode(',', $input->location);
+            $pincode = [];
+            $location = [];
+            foreach ($locationArr as $loc) {
+                if ((int) $loc !== 0) {
+                    $pincode[] = $loc;
+                } else {
+                    $location[] = $loc;
+                }
+            }
+            $where = "d.expertise_id = {$id} AND (dp.clinic_address IN(" . '"' . join(',', $location) . '"' . ") OR dp.clinic_pincode IN(" . '"' . join(',', $pincode) . '"' . "))";
+        } else {
+            $where = "d.expertise_id = {$id}";
+        }
+
+        try {
+            $data = $this->db->table('doctors as d')
+                ->distinct()
+                ->select('d.id as docid, d.name as doc_name, dp.clinic_address, dp.type as practice_type, dp.clinic_name, dp.price as fees, dp.clinic_pincode as pin, dr.total_rating ,dr.total_review')
+                ->where($where)
+                ->join('doctor_practice as dp', 'dp.doctor_id = d.id', 'left')
+                ->join("doctor_rating dr", "d.id=dr.doctor_id", "left")
+                ->get()->getResultArray();
+
+            foreach ($data as $key => $d) {
+                $res[$d['docid']]['docid'] = $d['docid'];
+                $res[$d['docid']]['doc_name'] = $d['doc_name'];
+                $res[$d['docid']]['doc_offered_appointment_type'][] = $d['practice_type'];
+                if ($d['total_rating'] && $d['total_review']) {
+                    $res[$d['docid']]['rating'] = round($d['total_rating'] / $d['total_review'], 2);
+                } else {
+                    $res[$d['docid']]['rating'] = 0;
+                }
+            }
+
+            return $this->response->setJSON([
+                'status' => true,
+                "msg" => "Data fetch Successful!",
+                'data' => $res,
+            ]);
+        } catch (\Exception $e) {
+            return $this->response->setJSON([
+                'status' => false,
+                "msg" => $e->getMessage(),
                 'data' => [],
             ]);
         }
