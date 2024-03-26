@@ -361,9 +361,10 @@ class Doctor extends BaseController
     {
         $input = $this->request->getJSON();
         $practiceDetailsModel = new DoctorPracticeDetailsModel();
-        $isPracticeExists = (new DoctorPracticeModel())->isPracticeExits($id);
+        $practiceModel = new DoctorPracticeModel();
+        $existingPractice = $practiceModel->find($id);
 
-        if (!$isPracticeExists) {
+        if (empty($existingPractice)) {
             return $this->response->setJSON([
                 'status' => false,
                 'msg' => 'Invalid Operation!',
@@ -376,15 +377,38 @@ class Doctor extends BaseController
         $return['practiceId'] = $id;
         try {
             foreach ($input as $key => $schedule) {
-                $data['days'] = json_encode($schedule->days);
-                $data['start_time'] = $schedule->startTime;
-                $data['end_time'] = $schedule->endTime;
+                foreach ($schedule->days as $day) {
+                    $data['day'] = $day;
 
-                $status = $practiceDetailsModel->insert($data, false);
+                    $data['start_time'] = date('H:i', strtotime($schedule->startTime));
+                    $data['end_time'] = date('H:i', strtotime($schedule->endTime));
 
-                $return['schedules'][$key]['days'] = $data['days'];
-                $return['schedules'][$key]['startTime'] = $data['start_time'];
-                $return['schedules'][$key]['endTime'] = $data['end_time'];
+                    if ($data['start_time'] > $data['end_time']) {
+                        $this->db->transRollback();
+                        return $this->response->setJSON([
+                            'status' => false,
+                            'msg' => 'Start time should be less than end time!',
+                            'data' => $data,
+                        ]);
+                    }
+
+                    $isConflictingPracticeSchedule = $practiceModel->isConflictingPractice($existingPractice['doctor_id'], $data);
+
+                    if (!empty($isConflictingPracticeSchedule)) {
+                        $this->db->transRollback();
+                        return $this->response->setJSON([
+                            'status' => false,
+                            'msg' => 'Time slot already exists!',
+                            'data' => $isConflictingPracticeSchedule,
+                        ]);
+                    }
+
+                    $status = $practiceDetailsModel->insert($data, false);
+
+                    $return['schedules'][$key]['days'][] = $data['day'];
+                    $return['schedules'][$key]['startTime'] = $data['start_time'];
+                    $return['schedules'][$key]['endTime'] = $data['end_time'];
+                }
             }
             $this->db->transComplete();
             return $this->response->setJSON([
@@ -409,25 +433,27 @@ class Doctor extends BaseController
 
         try {
             $data = $docPracticeModel
-                ->select('doctor_practice.*, doctor_practice_details.id as details_id, doctor_practice_details.days, doctor_practice_details.start_time, doctor_practice_details.end_time')
+                ->select('doctor_practice.*, doctor_practice_details.id as details_id, doctor_practice_details.day, doctor_practice_details.start_time, doctor_practice_details.end_time')
                 ->where('doctor_practice.doctor_id', $doc_id)
                 ->join('doctor_practice_details', 'doctor_practice_details.practice_id = doctor_practice.id', 'left')
                 ->findAll();
 
             $return['status'] = true;
             $return['msg'] = 'Successful!';
+            // $return['practices'] = $data;
 
             foreach ($data as $value) {
-                $return['practices'][$value['type']]['id'] = $value['id'];
+                $return['practices'][$value['type']]['practice_id'] = $value['id'];
                 $return['practices'][$value['type']]['type'] = $value['type'];
                 $return['practices'][$value['type']]['fees'] = (int) $value['price'];
                 $return['practices'][$value['type']]['isConsultationSwitched'] = (bool) $value['is_consultation_on'];
-                $return['practices'][$value['type']]['schedules'][] = [
-                    'id' => $value['details_id'],
-                    'days' => json_decode($value['days']),
-                    'startTime' => $value['start_time'],
-                    'endTime' => $value['end_time'],
-                ];
+
+                $schedules[$value['type']][$value['start_time'] . '-' . $value['end_time']]['id'] = $value['details_id'];
+                $schedules[$value['type']][$value['start_time'] . '-' . $value['end_time']]['days'][] = $value['day'];
+                $schedules[$value['type']][$value['start_time'] . '-' . $value['end_time']]['startTime'] = date('h:i a', strtotime($value['start_time']));
+                $schedules[$value['type']][$value['start_time'] . '-' . $value['end_time']]['endTime'] = date('h:i a', strtotime($value['end_time']));
+
+                $return['practices'][$value['type']]['schedules'] = array_values($schedules[$value['type']]);
             }
             return $this->response->setJSON($return);
         } catch (\Exception $e) {
@@ -489,9 +515,10 @@ class Doctor extends BaseController
     {
         $input = $this->request->getJSON();
         $practiceDetailsModel = new DoctorPracticeDetailsModel();
-        $isPracticeExists = (new DoctorPracticeModel())->isPracticeExits($id);
+        $practiceModel = new DoctorPracticeModel();
+        $existingPractice = $practiceModel->find($id);
 
-        if (!$isPracticeExists) {
+        if (empty($existingPractice)) {
             return $this->response->setJSON([
                 'status' => false,
                 'msg' => 'Invalid Operation!',
@@ -504,16 +531,39 @@ class Doctor extends BaseController
         $return['practiceId'] = $id;
         try {
             foreach ($input as $key => $schedule) {
-                $data['id'] = !empty($schedule->id) ? $schedule->id : '';
-                $data['days'] = json_encode($schedule->days);
-                $data['start_time'] = $schedule->startTime;
-                $data['end_time'] = $schedule->endTime;
+                foreach ($schedule->days as $day) {
+                    $data['day'] = $day;
+                    $data['id'] = !empty($schedule->id) ? $schedule->id : '';
 
-                $status = $practiceDetailsModel->save($data, false);
+                    $data['start_time'] = date('H:i', strtotime($schedule->startTime));
+                    $data['end_time'] = date('H:i', strtotime($schedule->endTime));
 
-                $return['schedules'][$key]['days'] = $data['days'];
-                $return['schedules'][$key]['startTime'] = $data['start_time'];
-                $return['schedules'][$key]['endTime'] = $data['end_time'];
+                    if ($data['start_time'] > $data['end_time']) {
+                        $this->db->transRollback();
+                        return $this->response->setJSON([
+                            'status' => false,
+                            'msg' => 'Start time should be less than end time!',
+                            'data' => $data,
+                        ]);
+                    }
+
+                    $isConflictingPracticeSchedule = $practiceModel->isConflictingPractice($existingPractice['doctor_id'], $data);
+
+                    if (!empty($isConflictingPracticeSchedule)) {
+                        $this->db->transRollback();
+                        return $this->response->setJSON([
+                            'status' => false,
+                            'msg' => 'Time slot already exists!',
+                            'data' => $isConflictingPracticeSchedule,
+                        ]);
+                    }
+
+                    $status = $practiceDetailsModel->save($data, false);
+
+                    $return['schedules'][$key]['days'][] = $data['day'];
+                    $return['schedules'][$key]['startTime'] = $data['start_time'];
+                    $return['schedules'][$key]['endTime'] = $data['end_time'];
+                }
             }
             $this->db->transComplete();
             return $this->response->setJSON([
